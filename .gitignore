@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+.github
+
+# Storage directories content (keep directories but not stored chunks)
+node1_storage/*
+node2_storage/*
+node3_storage/*
+!node1_storage/.gitkeep
+!node2_storage/.gitkeep
+!node3_storage/.gitkeep
+
+# Test files
+test_*.txt
+downloaded_*.txt
+my_test_file.txt
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
