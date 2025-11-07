@@ -3,11 +3,6 @@ import json
 import struct
 
 def recv_all(sock, length):
-    """
-    Receive exactly 'length' bytes from socket.
-    Handles partial reads and loops until all bytes are received.
-    Returns the buffer of 'length' bytes, or None if socket closes.
-    """
     buffer = b''
     while len(buffer) < length:
         try:
@@ -22,10 +17,6 @@ def recv_all(sock, length):
     return buffer
 
 def send_json(sock, data):
-    """
-    Send JSON data using length-prefixed protocol.
-    Sends a 4-byte header with message length, then the JSON message.
-    """
     try:
         # Serialize data to JSON byte string
         message = json.dumps(data).encode('utf-8')
@@ -47,10 +38,6 @@ def send_json(sock, data):
     return True
 
 def recv_json(sock):
-    """
-    Receive JSON data using length-prefixed protocol.
-    Reads a 4-byte header to get message length, then reads the full message.
-    """
     try:
         # Read 4-byte length prefix
         header_bytes = recv_all(sock, 4)

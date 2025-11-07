@@ -2,8 +2,7 @@ import socket
 import sys
 import os
 import hashlib
-import base64
-from utils import send_json, recv_json
+from utils import send_json, recv_json, recv_all
 from config import MASTER_HOST, MASTER_PORT, CHUNK_SIZE
 
 
@@ -194,20 +193,27 @@ class Client:
             return None
 
     def store_chunk(self, node_host, node_port, chunk_id, chunk_data):
-
         try:
             node_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             node_socket.connect((node_host, node_port))
 
-            encoded_data = base64.b64encode(chunk_data).decode('utf-8')
+            # Get chunk size
+            chunk_size = len(chunk_data)
 
-            request = {
+            # Create request metadata (no data field, just metadata)
+            request_metadata = {
                 'command': 'STORE',
                 'chunk_id': chunk_id,
-                'data': encoded_data
+                'size': chunk_size
             }
 
-            send_json(node_socket, request)
+            # Send metadata via JSON
+            send_json(node_socket, request_metadata)
+
+            # Send raw binary chunk data
+            node_socket.sendall(chunk_data)
+
+            # Receive response
             response = recv_json(node_socket)
             node_socket.close()
 
@@ -222,27 +228,44 @@ class Client:
             return False
 
     def retrieve_chunk(self, node_host, node_port, chunk_id):
-
         try:
             node_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             node_socket.connect((node_host, node_port))
 
+            # Send retrieve request
             request = {
                 'command': 'RETRIEVE',
                 'chunk_id': chunk_id
             }
 
             send_json(node_socket, request)
+
+            # Receive metadata response
             response = recv_json(node_socket)
-            node_socket.close()
 
             if response and response.get('status') == 'success':
-                encoded_data = response.get('data')
-                chunk_data = base64.b64decode(encoded_data)
+                # Get chunk size from response
+                chunk_size = response.get('size')
+
+                if chunk_size is None:
+                    print(f"  Error: No size in response for chunk {chunk_id}")
+                    node_socket.close()
+                    return None
+
+                # Receive raw binary chunk data
+                chunk_data = recv_all(node_socket, chunk_size)
+
+                node_socket.close()
+
+                if chunk_data is None:
+                    print(f"  Failed to receive data for chunk {chunk_id} from {node_host}:{node_port}")
+                    return None
+
                 print(f"  Retrieved chunk {chunk_id} from {node_host}:{node_port}")
                 return chunk_data
             else:
                 print(f"  Failed to retrieve chunk {chunk_id} from {node_host}:{node_port}")
+                node_socket.close()
                 return None
         except Exception as e:
             print(f"  Error retrieving chunk from {node_host}:{node_port}: {e}")

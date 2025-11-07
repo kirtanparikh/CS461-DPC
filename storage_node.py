@@ -3,7 +3,7 @@ import threading
 import time
 import os
 import sys
-from utils import send_json, recv_json
+from utils import send_json, recv_json, recv_all
 from config import MASTER_HOST, MASTER_PORT, HEARTBEAT_INTERVAL
 
 
@@ -77,20 +77,24 @@ class StorageNode:
             client_socket.close()
 
     def handle_store(self, client_socket, request):
-
         try:
             chunk_id = request.get('chunk_id')
-            chunk_data = request.get('data')
+            chunk_size = request.get('size')
 
-            if not chunk_id or chunk_data is None:
-                response = {'status': 'error', 'message': 'Missing chunk_id or data'}
+            if not chunk_id or chunk_size is None:
+                response = {'status': 'error', 'message': 'Missing chunk_id or size'}
                 send_json(client_socket, response)
                 return
 
-            import base64
-            if isinstance(chunk_data, str):
-                chunk_data = base64.b64decode(chunk_data)
+            # Receive raw binary chunk data
+            chunk_data = recv_all(client_socket, chunk_size)
 
+            if chunk_data is None:
+                response = {'status': 'error', 'message': 'Failed to receive chunk data'}
+                send_json(client_socket, response)
+                return
+
+            # Write raw chunk data to file
             chunk_path = os.path.join(self.storage_dir, chunk_id)
             with open(chunk_path, 'wb') as f:
                 f.write(chunk_data)
@@ -105,7 +109,6 @@ class StorageNode:
             send_json(client_socket, response)
 
     def handle_retrieve(self, client_socket, request):
-
         try:
             chunk_id = request.get('chunk_id')
 
@@ -121,20 +124,25 @@ class StorageNode:
                 send_json(client_socket, response)
                 return
 
+            # Read raw chunk data from file
             with open(chunk_path, 'rb') as f:
                 chunk_data = f.read()
 
-            import base64
-            encoded_data = base64.b64encode(chunk_data).decode('utf-8')
+            # Get chunk size
+            chunk_size = len(chunk_data)
 
-            print(f"Retrieved chunk {chunk_id} ({len(chunk_data)} bytes)")
+            print(f"Retrieved chunk {chunk_id} ({chunk_size} bytes)")
 
+            # Send metadata response
             response = {
                 'status': 'success',
                 'chunk_id': chunk_id,
-                'data': encoded_data
+                'size': chunk_size
             }
             send_json(client_socket, response)
+
+            # Send raw binary chunk data
+            client_socket.sendall(chunk_data)
         except Exception as e:
             print(f"Error retrieving chunk: {e}")
             response = {'status': 'error', 'message': str(e)}
