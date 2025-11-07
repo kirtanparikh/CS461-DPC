@@ -55,7 +55,13 @@ def download_file(filename):
 
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'download_{filename}')
 
-        client.download_file(filename, temp_path)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        success = client.download_file(filename, temp_path)
+
+        if not success:
+            return jsonify({'status': 'error', 'message': 'Download failed. All storage nodes may be offline.'}), 500
 
         return send_file(temp_path, as_attachment=True, download_name=filename)
 

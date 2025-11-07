@@ -60,7 +60,7 @@ class Client:
 
         if not download_info:
             print(f"Failed to get download info for {filename}")
-            return
+            return False
 
         chunk_ids = download_info['chunk_ids']
         chunk_locations = download_info['chunk_locations']
@@ -89,6 +89,7 @@ class Client:
 
         self.reassemble_file(chunks, output_path)
         print(f"Download complete: {output_path}")
+        return True
 
     def list_files(self):
 
