@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify, send_file
 import os
 import sys
 import hashlib
-import base64
 from client import Client
 import tempfile
 from werkzeug.utils import secure_filename
